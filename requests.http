@@ -83,3 +83,47 @@ PATCH {{base}}/products/PASTE_PRODUCT_ID
 Content-Type: application/json
 
 { "brand": "PASTE_BRAND_ID" }
+
+############ AUTH ############
+# Run "Login as admin" first: the token is captured automatically into {{adminToken}}.
+
+### Register a customer
+POST {{base}}/auth/register
+Content-Type: application/json
+
+{ "name": "Sourav", "email": "sourav@example.com", "password": "secret123" }
+
+### Login as customer
+# @name customerLogin
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": "sourav@example.com", "password": "secret123" }
+
+### Login as admin (created by `npm run seed`)
+# @name adminLogin
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "email": "admin@shopapi.dev", "password": "Admin@12345" }
+
+@adminToken = {{adminLogin.response.body.data.accessToken}}
+@customerToken = {{customerLogin.response.body.data.accessToken}}
+
+### Who am I?
+GET {{base}}/auth/me
+Authorization: Bearer {{customerToken}}
+
+### Customer tries to create a product -> 403
+POST {{base}}/products
+Content-Type: application/json
+Authorization: Bearer {{customerToken}}
+
+{ "name": "Not allowed", "priceInCents": 100, "category": "home" }
+
+### Admin creates a product -> 201
+POST {{base}}/products
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{ "name": "Admin Product", "priceInCents": 100, "category": "home" }

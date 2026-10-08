@@ -5,6 +5,8 @@ import { BrandModel } from "../modules/brand/brand.model";
 import { CreateBrandInput } from "../modules/brand/brand.schema";
 import { ProductModel } from "../modules/product/product.model";
 import { CreateProductInput } from "../modules/product/product.schema";
+import { UserModel } from "../modules/user/user.model";
+import { hashPassword } from "../modules/auth/auth.service";
 
 // Prices are in paise (₹1 = 100 paise).
 const products: CreateProductInput[] = [
@@ -298,6 +300,10 @@ async function seed() {
     }),
   );
 
+  // 4. An admin account. The public /auth/register endpoint only ever creates customers,
+  //    so the first admin has to be created out-of-band like this.
+  const adminSeeded = await seedAdmin();
+
   logger.info(
     {
       brands: { inserted: brandResult.upsertedCount, alreadyExisted: brandResult.matchedCount },
@@ -305,9 +311,21 @@ async function seed() {
         inserted: productResult.upsertedCount,
         alreadyExisted: productResult.matchedCount,
       },
+      admin: adminSeeded ? env.SEED_ADMIN_EMAIL : "skipped (SEED_ADMIN_PASSWORD not set)",
     },
     "Seed done",
   );
+}
+
+async function seedAdmin() {
+  if (!env.SEED_ADMIN_PASSWORD) return false;
+  const passwordHash = await hashPassword(env.SEED_ADMIN_PASSWORD);
+  await UserModel.updateOne(
+    { email: env.SEED_ADMIN_EMAIL },
+    { $set: { name: "Admin", passwordHash, role: "admin" } },
+    { upsert: true },
+  );
+  return true;
 }
 
 seed()
