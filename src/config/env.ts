@@ -13,6 +13,8 @@ const envSchema = z.object({
   JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 characters"),
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900), // 15 minutes
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
+  // 12 in production; tests lower it (each +1 doubles hashing time).
+  BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
   SEED_ADMIN_EMAIL: z.email().default("admin@shopapi.dev"),
   SEED_ADMIN_PASSWORD: z.string().min(8).optional(),
 });

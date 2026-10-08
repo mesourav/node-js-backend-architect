@@ -34,6 +34,17 @@ export default tseslint.config(
     },
   },
   {
+    // Tests read HTTP responses (`res.body`), which are untyped by nature: the assertions
+    // themselves are the type check. Keep strict rules for app code only.
+    files: ["tests/**/*.ts"],
+    rules: {
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+    },
+  },
+  {
     files: ["eslint.config.mjs"],
     extends: [tseslint.configs.disableTypeChecked],
   },

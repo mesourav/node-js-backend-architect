@@ -1,8 +1,12 @@
 import { z } from "zod";
 
+// Clean up FIRST, then validate. z.email().trim() would check the format before
+// trimming, rejecting "me@x.com " (a trailing space phones often add on autocomplete).
+const emailSchema = z.string().trim().toLowerCase().pipe(z.email());
+
 export const registerSchema = z.object({
   name: z.string().trim().min(2).max(80),
-  email: z.email().trim().toLowerCase(),
+  email: emailSchema,
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")
@@ -15,7 +19,7 @@ export const registerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.email().trim().toLowerCase(),
+  email: emailSchema,
   // No strength rules on login: just "was something sent".
   password: z.string().min(1).max(72),
 });

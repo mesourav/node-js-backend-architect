@@ -1,15 +1,16 @@
 {
+  // Editor, ESLint and `npm run typecheck`: type-check app code AND tests.
+  // The production build uses tsconfig.build.json, which compiles only src/.
   "compilerOptions": {
     "target": "ES2022",
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "rootDir": "src",
-    "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src", "tests", "vitest.config.ts"]
 }

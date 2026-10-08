@@ -8,7 +8,7 @@ import { LoginInput, RegisterInput } from "./auth.schema";
 
 // Cost factor: each +1 doubles the hashing time. ~12 takes a few hundred ms, which is
 // unnoticeable for one login but makes brute-forcing stolen hashes extremely slow.
-const BCRYPT_ROUNDS = 12;
+const BCRYPT_ROUNDS = env.BCRYPT_ROUNDS;
 
 // Used when the email doesn't exist, so a login takes the same time either way.
 // Otherwise attackers could tell registered emails apart by response time.
