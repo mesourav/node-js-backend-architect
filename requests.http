@@ -1,0 +1,44 @@
+### Install the "REST Client" extension in VS Code, then click "Send Request" above each block.
+@base = http://localhost:4000/api/v1
+
+### Health check
+GET {{base}}/health
+
+### Create a product
+POST {{base}}/products
+Content-Type: application/json
+
+{
+  "name": "Mechanical Keyboard",
+  "description": "RGB, hot-swappable switches",
+  "priceInCents": 549900,
+  "category": "electronics",
+  "stock": 25
+}
+
+### List products (pagination, filter, sort)
+GET {{base}}/products?page=1&limit=10&category=electronics&sort=-priceInCents
+
+### Price range
+GET {{base}}/products?minPrice=10000&maxPrice=600000
+
+### Text search
+GET {{base}}/products?search=keyboard
+
+### Get one (paste an _id from the create response)
+GET {{base}}/products/PASTE_ID_HERE
+
+### Partial update
+PATCH {{base}}/products/PASTE_ID_HERE
+Content-Type: application/json
+
+{ "stock": 20 }
+
+### Delete
+DELETE {{base}}/products/PASTE_ID_HERE
+
+### Validation error example
+POST {{base}}/products
+Content-Type: application/json
+
+{ "name": "x", "priceInCents": -5, "category": "toys" }
