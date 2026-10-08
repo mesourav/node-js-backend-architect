@@ -1,15 +1,15 @@
-import { MongoMemoryServer } from "mongodb-memory-server";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
 import type { TestProject } from "vitest/node";
 
-// A real MongoDB server running in memory, started once for the whole test run.
-// Real database = tests exercise real queries, indexes and aggregations (no fakes),
-// while staying fast, isolated, and free of any external dependency.
+// A real MongoDB running in memory, started once for the whole test run.
+// It's a REPLICA SET (here a single member) because MongoDB only supports transactions
+// on replica sets, like Atlas always is. A standalone server would reject them.
 export async function setup(project: TestProject) {
-  const mongod = await MongoMemoryServer.create();
-  project.provide("mongoUri", mongod.getUri());
+  const replSet = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+  project.provide("mongoUri", replSet.getUri());
 
   return async function teardown() {
-    await mongod.stop();
+    await replSet.stop();
   };
 }
 

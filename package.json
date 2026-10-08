@@ -15,7 +15,9 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "explain": "tsx src/scripts/explain.ts",
+    "backfill:brand-counts": "tsx src/scripts/backfillBrandCounts.ts"
   },
   "keywords": [],
   "author": "",

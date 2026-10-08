@@ -37,11 +37,16 @@ export async function createBrand(overrides: { name?: string; country?: string }
 }
 
 export async function createProduct(overrides: Partial<CreateProductInput> = {}) {
-  return ProductModel.create({
+  const product = await ProductModel.create({
     name: `Product ${randomUUID().slice(0, 8)}`,
     priceInCents: 10_000,
     category: "electronics",
     stock: 5,
     ...overrides,
   });
+  // Keep the denormalised counter consistent, like the product service does.
+  if (product.brand) {
+    await BrandModel.updateOne({ _id: product.brand }, { $inc: { productCount: 1 } });
+  }
+  return product;
 }

@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { AppError } from "../../utils/AppError";
 import * as brandService from "../brand/brand.service";
 import { ProductModel } from "./product.model";
@@ -16,10 +16,22 @@ import {
 type BrandSummary = { _id: Types.ObjectId; name: string; country: string };
 const BRAND_FIELDS = "name country";
 
+/**
+ * TRANSACTION: "link to brand" and "insert product" must succeed or fail TOGETHER.
+ * Without it, a crash between the two steps would leave brand.productCount wrong forever.
+ *
+ * connection.transaction() starts a session, runs the function, commits if it succeeds,
+ * aborts (undoes everything) if it throws, and retries automatically on temporary
+ * write conflicts. Every query inside MUST pass { session }, or it runs outside the
+ * transaction and is NOT undone on abort.
+ */
 export async function createProduct(input: CreateProductInput) {
-  // No foreign keys in MongoDB: check the referenced brand exists ourselves.
-  if (input.brand) await brandService.assertBrandExists(input.brand);
-  return ProductModel.create(input);
+  return mongoose.connection.transaction(async (session) => {
+    if (input.brand) await brandService.linkProduct(input.brand, session);
+    // create() needs the array form to accept a session.
+    const [product] = await ProductModel.create([input], { session });
+    return product;
+  });
 }
 
 /**
@@ -73,18 +85,34 @@ export async function getProductById(id: string) {
 }
 
 export async function updateProduct(id: string, input: UpdateProductInput) {
-  if (input.brand) await brandService.assertBrandExists(input.brand);
-  const product = await ProductModel.findByIdAndUpdate(id, input, {
-    returnDocument: "after", // return the updated document, not the old one
-    runValidators: true, // apply schema rules (min, enum...) on updates too
-  }).lean();
-  if (!product) throw new AppError(404, "Product not found");
-  return product;
+  return mongoose.connection.transaction(async (session) => {
+    const existing = await ProductModel.findById(id, { brand: 1 }).session(session).lean();
+    if (!existing) throw new AppError(404, "Product not found");
+
+    // Moving the product to another brand (or removing its brand) changes two counters.
+    const oldBrand = existing.brand?.toString() ?? null;
+    const newBrand = input.brand === undefined ? oldBrand : input.brand;
+    if (newBrand !== oldBrand) {
+      if (oldBrand) await brandService.unlinkProduct(oldBrand, session);
+      if (newBrand) await brandService.linkProduct(newBrand, session);
+    }
+
+    const product = await ProductModel.findByIdAndUpdate(id, input, {
+      returnDocument: "after", // return the updated document, not the old one
+      runValidators: true, // apply schema rules (min, enum...) on updates too
+      session,
+    }).lean();
+    if (!product) throw new AppError(404, "Product not found");
+    return product;
+  });
 }
 
 export async function deleteProduct(id: string) {
-  const product = await ProductModel.findByIdAndDelete(id);
-  if (!product) throw new AppError(404, "Product not found");
+  await mongoose.connection.transaction(async (session) => {
+    const product = await ProductModel.findByIdAndDelete(id, { session });
+    if (!product) throw new AppError(404, "Product not found");
+    if (product.brand) await brandService.unlinkProduct(product.brand.toString(), session);
+  });
 }
 
 type ProductWithBrand = {

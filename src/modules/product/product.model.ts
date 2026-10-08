@@ -21,6 +21,10 @@ const productSchema = new Schema(
 // Indexes support the queries we actually run.
 // Compound index for "active products in a category, sorted by price".
 productSchema.index({ category: 1, isActive: 1, priceInCents: 1 });
+// The default product list: { isActive: true } sorted newest first.
+// ESR rule: Equality field first, then the Sort field. Found with `npm run explain`:
+// without it, the most common query read EVERY product and sorted them in memory.
+productSchema.index({ isActive: 1, createdAt: -1 });
 // Text index for searching by name/description.
 productSchema.index({ name: "text", description: "text" });
 // Index the reference: every join/filter on brand (brand -> its products) uses it.

@@ -2,6 +2,7 @@ import { env } from "../config/env";
 import { connectDB, disconnectDB } from "../config/db";
 import { logger } from "../config/logger";
 import { BrandModel } from "../modules/brand/brand.model";
+import { recalculateProductCounts } from "../modules/brand/brand.service";
 import { CreateBrandInput } from "../modules/brand/brand.schema";
 import { ProductModel } from "../modules/product/product.model";
 import { CreateProductInput } from "../modules/product/product.schema";
@@ -300,7 +301,11 @@ async function seed() {
     }),
   );
 
-  // 4. An admin account. The public /auth/register endpoint only ever creates customers,
+  // 4. Products were bulk-written directly (not through the service), so recompute the
+  //    denormalised brand.productCount from the actual data.
+  await recalculateProductCounts();
+
+  // 5. An admin account. The public /auth/register endpoint only ever creates customers,
   //    so the first admin has to be created out-of-band like this.
   const adminSeeded = await seedAdmin();
 

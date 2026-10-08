@@ -1,4 +1,4 @@
-import mongoose, { Types } from "mongoose";
+import { ClientSession, Types } from "mongoose";
 import { AppError } from "../../utils/AppError";
 import { BrandModel } from "./brand.model";
 import { BrandSummaryQuery, CreateBrandInput } from "./brand.schema";
@@ -15,31 +15,63 @@ export async function listBrands() {
   return BrandModel.find().sort("name").lean();
 }
 
-// Used by the product module to enforce the relationship. MongoDB has no foreign keys,
-// so referential integrity is the application's job.
-export async function assertBrandExists(id: string) {
-  const exists = await BrandModel.exists({ _id: id });
-  if (!exists) throw new AppError(400, `Brand ${id} does not exist`);
+// Called by the product service INSIDE its transaction when a product starts using a brand.
+// MongoDB has no foreign keys, so referential integrity is the application's job.
+// "Increment only if the brand exists" is one atomic operation: if the brand was just
+// deleted, nothing matches and we refuse the link.
+export async function linkProduct(brandId: string, session: ClientSession) {
+  const brand = await BrandModel.findByIdAndUpdate(
+    brandId,
+    { $inc: { productCount: 1 } },
+    { session },
+  );
+  if (!brand) throw new AppError(400, `Brand ${brandId} does not exist`);
+}
+
+// Called by the product service INSIDE its transaction when a product stops using a brand.
+export async function unlinkProduct(brandId: string, session: ClientSession) {
+  await BrandModel.updateOne({ _id: brandId }, { $inc: { productCount: -1 } }, { session });
 }
 
 // Like SQL's ON DELETE RESTRICT: a brand can only be deleted when no product references it.
+//
+// The old version did "count products" then "delete brand" as two steps, with a race:
+// a product could be linked in between. Now it is ONE atomic command on the brand
+// document: "delete it only if productCount is 0". Linking a product also writes to this
+// same document (inside a transaction), so MongoDB serialises the two: they can't both win.
 export async function deleteBrand(id: string) {
-  // 1. Count products that point to this brand: active AND inactive, otherwise an
-  //    inactive product would be left pointing to a brand that no longer exists.
-  //    We use the raw collection (not a Mongoose model), which does NOT convert
-  //    strings to ObjectIds for us, so we convert the id ourselves.
-  const productCount = await mongoose.connection
-    .collection(PRODUCTS_COLLECTION)
-    .countDocuments({ brand: new Types.ObjectId(id) });
+  const deleted = await BrandModel.findOneAndDelete({ _id: id, productCount: 0 });
+  if (deleted) return;
 
-  // 2. Still in use -> refuse with 409 Conflict.
-  if (productCount > 0) {
-    throw new AppError(409, `Cannot delete brand: ${productCount} product(s) still use it`);
-  }
+  // Nothing deleted: either the brand doesn't exist, or it is still in use.
+  const brand = await BrandModel.findById(id, { productCount: 1 }).lean();
+  if (!brand) throw new AppError(404, "Brand not found");
+  throw new AppError(409, `Cannot delete brand: ${brand.productCount} product(s) still use it`);
+}
 
-  // 3. Delete. null means there was no brand with this id -> 404.
-  const deleted = await BrandModel.findByIdAndDelete(id);
-  if (!deleted) throw new AppError(404, "Brand not found");
+// Recomputes every brand's productCount from the products collection. Used by the
+// backfill script for data created before productCount existed (a "data migration").
+export async function recalculateProductCounts() {
+  const counts = await BrandModel.aggregate<{ _id: Types.ObjectId; count: number }>([
+    {
+      $lookup: {
+        from: PRODUCTS_COLLECTION,
+        localField: "_id",
+        foreignField: "brand",
+        pipeline: [{ $project: { _id: 1 } }],
+        as: "products",
+      },
+    },
+    { $project: { count: { $size: "$products" } } },
+  ]);
+  if (counts.length === 0) return 0;
+
+  await BrandModel.bulkWrite(
+    counts.map((c) => ({
+      updateOne: { filter: { _id: c._id }, update: { $set: { productCount: c.count } } },
+    })),
+  );
+  return counts.length;
 }
 
 /**
