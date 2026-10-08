@@ -30,6 +30,34 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  redis:
+    image: redis:8-alpine
+    # This Redis holds only rebuildable data (cache entries, rate-limit counters), so:
+    #   - a memory cap, and when it's full, evict the least-recently-used keys
+    #   - no persistence to disk: after a restart the cache simply refills
+    # Data that must NOT be lost (job queues, Phase 8B) needs different settings
+    # (no eviction, persistence), which is why queues usually get their own Redis.
+    command:
+      [
+        "redis-server",
+        "--maxmemory",
+        "128mb",
+        "--maxmemory-policy",
+        "allkeys-lru",
+        "--save",
+        "",
+        "--appendonly",
+        "no",
+      ]
+    ports:
+      - "6379:6379" # so `npm run dev` on your laptop can use it too
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   api:
     build: .
     image: shopapi:local
@@ -44,8 +72,11 @@ services:
       # Exactly one proxy (nginx) in front of the app.
       TRUST_PROXY: 1
       CORS_ORIGINS: http://localhost:5173
+      REDIS_URL: redis://redis:6379
     depends_on:
       mongo:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     # Two identical instances: horizontal scaling, behind the nginx load balancer.
     # No `ports:` on purpose: the API is only reachable through nginx.

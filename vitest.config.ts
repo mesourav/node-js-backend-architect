@@ -7,7 +7,7 @@ export default defineConfig({
     // Runs ONCE before all test files: starts an in-memory MongoDB.
     globalSetup: ["tests/globalSetup.ts"],
     // Runs before EACH test file: connects to it and cleans data between tests.
-    setupFiles: ["tests/setup.ts"],
+    setupFiles: ["tests/setup.mts"],
     // Set before any app code loads. dotenv never overrides existing variables, so these
     // win over .env -- in particular the real Atlas MONGODB_URI is replaced by a dummy
     // value that can't connect anywhere. Tests can never touch real data.

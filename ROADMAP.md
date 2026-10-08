@@ -12,7 +12,7 @@ Stack: Node.js + Express + TypeScript + MongoDB, deployed on AWS.
 | 5   | Prod hardening     | Logging (pino), request IDs, helmet, CORS, rate limiting, liveness/readiness probes, proxy & timeout settings                       | ✅     |
 | 6   | Database choice    | SQL vs NoSQL vs Postgres, indexing, transactions, CAP theorem (theory + small Postgres comparison)                                  | 🟡     |
 | 7   | Docker             | Dockerfile (multi-stage), docker-compose with Mongo + Redis                                                                         | ✅     |
-| 8   | Caching & queues   | Redis caching, background jobs                                                                                                      | ⬜     |
+| 8   | Caching & queues   | ~~Redis caching, shared rate limiter~~ ✅ (8A), background jobs (8B)                                                                | 🟡     |
 | 9   | Kubernetes         | Deployments, Services, ConfigMaps/Secrets, probes, HPA autoscaling (local with kind/minikube)                                       | ⬜     |
 | 10  | AWS & scaling      | ECR, ECS/EKS, Application Load Balancer, horizontal vs vertical scaling, stateless design, CI/CD with GitHub Actions                | ⬜     |
 | 11  | System design      | Interview-style designs: URL shortener, rate limiter, e-commerce at scale                                                           | ⬜     |
