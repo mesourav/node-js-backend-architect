@@ -1,5 +1,6 @@
 import { env } from "../config/env";
 import { connectDB, disconnectDB } from "../config/db";
+import { logger } from "../config/logger";
 import { ProductModel } from "../modules/product/product.model";
 import { CreateProductInput } from "../modules/product/product.schema";
 
@@ -237,14 +238,12 @@ async function seed() {
     })),
   );
 
-  console.log(
-    `Seed done: ${result.upsertedCount} inserted, ${result.matchedCount} already existed (updated)`,
-  );
+  logger.info({ inserted: result.upsertedCount, alreadyExisted: result.matchedCount }, "Seed done");
 }
 
 seed()
   .catch((err: unknown) => {
-    console.error("Seed failed:", err instanceof Error ? err.message : err);
+    logger.error({ err }, "Seed failed");
     process.exitCode = 1;
   })
   .finally(disconnectDB);

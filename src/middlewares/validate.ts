@@ -24,7 +24,9 @@ export function validate(schemas: Schemas) {
     }
 
     if (errors.length) {
-      return res.status(400).json({ success: false, message: "Validation failed", errors });
+      return res
+        .status(400)
+        .json({ success: false, requestId: req.id, message: "Validation failed", errors });
     }
 
     if (parsed.body !== undefined) req.body = parsed.body;

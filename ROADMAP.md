@@ -9,7 +9,7 @@ Stack: Node.js + Express + TypeScript + MongoDB, deployed on AWS.
 | 2   | MongoDB + CRUD     | Mongoose models, REST design, validation (zod), pagination/filter/sort, layered architecture (route → controller → service → model) | ✅     |
 | 3   | Auth               | bcrypt, JWT access + refresh tokens, httpOnly cookies, role-based authorization (user/admin)                                        | ⬜     |
 | 4   | Testing            | Jest/Vitest, unit vs integration tests, supertest, in-memory Mongo, coverage                                                        | ⬜     |
-| 5   | Prod hardening     | Logging (pino), helmet, CORS, rate limiting, request IDs                                                                            | ⬜     |
+| 5   | Prod hardening     | ~~Logging (pino)~~ ✅, ~~request IDs~~ ✅, helmet, CORS, rate limiting                                                              | 🟡     |
 | 6   | Database choice    | SQL vs NoSQL vs Postgres, indexing, transactions, CAP theorem (theory + small Postgres comparison)                                  | ⬜     |
 | 7   | Docker             | Dockerfile (multi-stage), docker-compose with Mongo + Redis                                                                         | ⬜     |
 | 8   | Caching & queues   | Redis caching, background jobs                                                                                                      | ⬜     |

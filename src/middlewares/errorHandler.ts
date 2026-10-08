@@ -46,13 +46,16 @@ function isDuplicateKeyError(err: unknown): err is { code: 11000; keyValue?: obj
 }
 
 // Central error handler: Express recognises it because it takes 4 arguments.
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   const { statusCode, message } = toHttpError(err);
 
-  if (statusCode >= 500) console.error(err);
+  // req.log is the per-request logger from pino-http: the log line carries the request id.
+  if (statusCode >= 500) req.log.error({ err }, "Unhandled error");
 
   res.status(statusCode).json({
     success: false,
+    // The client can quote this id to support; we search logs for it.
+    requestId: req.id,
     // Never leak internal error details (DB errors, stack traces) in production.
     message: statusCode >= 500 && env.NODE_ENV === "production" ? "Internal server error" : message,
     ...(env.NODE_ENV === "development" && err instanceof Error && { stack: err.stack }),
