@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import { isValidObjectId } from 'mongoose';
-import { PRODUCT_CATEGORIES } from './product.model';
+import { z } from "zod";
+import { isValidObjectId } from "mongoose";
+import { PRODUCT_CATEGORIES } from "./product.model";
 
 export const createProductSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -16,10 +16,10 @@ export const updateProductSchema = createProductSchema
   .omit({ stock: true })
   .extend({ stock: z.number().int().nonnegative() })
   .partial()
-  .refine((data) => Object.keys(data).length > 0, 'Provide at least one field to update');
+  .refine((data) => Object.keys(data).length > 0, "Provide at least one field to update");
 
 export const productIdSchema = z.object({
-  id: z.string().refine((id) => isValidObjectId(id), 'Invalid product id'),
+  id: z.string().refine((id) => isValidObjectId(id), "Invalid product id"),
 });
 
 export const listProductsQuerySchema = z.object({
@@ -31,8 +31,8 @@ export const listProductsQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),
   // Whitelist sortable fields so clients can't sort on arbitrary (unindexed) fields.
   sort: z
-    .enum(['priceInCents', '-priceInCents', 'createdAt', '-createdAt', 'name', '-name'])
-    .default('-createdAt'),
+    .enum(["priceInCents", "-priceInCents", "createdAt", "-createdAt", "name", "-name"])
+    .default("-createdAt"),
 });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;

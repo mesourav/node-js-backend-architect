@@ -1,9 +1,9 @@
-import mongoose from 'mongoose';
-import { env } from './env';
+import mongoose from "mongoose";
+import { env } from "./env";
 
 export async function connectDB() {
-  mongoose.connection.on('disconnected', () => console.warn('MongoDB disconnected'));
-  mongoose.connection.on('reconnected', () => console.log('MongoDB reconnected'));
+  mongoose.connection.on("disconnected", () => console.warn("MongoDB disconnected"));
+  mongoose.connection.on("reconnected", () => console.log("MongoDB reconnected"));
 
   await mongoose.connect(env.MONGODB_URI, {
     dbName: env.MONGODB_DB_NAME,
@@ -17,5 +17,5 @@ export async function connectDB() {
 
 export async function disconnectDB() {
   await mongoose.connection.close();
-  console.log('MongoDB connection closed');
+  console.log("MongoDB connection closed");
 }

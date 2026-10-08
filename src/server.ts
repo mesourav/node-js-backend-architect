@@ -1,6 +1,6 @@
-import { createApp } from './app';
-import { env } from './config/env';
-import { connectDB, disconnectDB } from './config/db';
+import { createApp } from "./app";
+import { env } from "./config/env";
+import { connectDB, disconnectDB } from "./config/db";
 
 async function main() {
   // Connect to the DB BEFORE accepting traffic: no point serving requests we can't fulfil.
@@ -22,11 +22,11 @@ async function main() {
     setTimeout(() => process.exit(1), 10_000).unref();
   }
 
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
-main().catch((err) => {
-  console.error('Failed to start server:', err.message);
+main().catch((err: unknown) => {
+  console.error("Failed to start server:", err instanceof Error ? err.message : err);
   process.exit(1);
 });
