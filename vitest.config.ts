@@ -17,6 +17,9 @@ export default defineConfig({
       MONGODB_URI: "mongodb://tests-use-the-in-memory-server",
       JWT_ACCESS_SECRET: "test-only-secret-at-least-32-characters-long",
       BCRYPT_ROUNDS: "4", // fast hashing in tests
+      // High limits so normal tests never hit them; the rate-limit test sets its own.
+      RATE_LIMIT_MAX: "100000",
+      AUTH_RATE_LIMIT_MAX: "100000",
     },
     // First run downloads a MongoDB binary (~100MB), which can take a while.
     hookTimeout: 120_000,

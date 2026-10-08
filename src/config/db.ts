@@ -19,6 +19,17 @@ export async function connectDB() {
   logger.info({ db: env.MONGODB_DB_NAME }, "MongoDB connected");
 }
 
+// A real round trip to the database, not just "is the socket open".
+export async function isDBHealthy() {
+  if (mongoose.connection.readyState !== mongoose.ConnectionStates.connected) return false;
+  try {
+    await mongoose.connection.db?.admin().ping();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function disconnectDB() {
   await mongoose.connection.close();
   logger.info("MongoDB connection closed");

@@ -15,6 +15,22 @@ const envSchema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
   // 12 in production; tests lower it (each +1 doubles hashing time).
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
+  // Number of proxies (load balancers) in front of the app. 0 locally; 1 behind an AWS ALB.
+  // Needed so req.ip is the real client IP (from X-Forwarded-For), not the load balancer's.
+  TRUST_PROXY: z.coerce.number().int().min(0).default(0),
+  // Comma-separated browser origins allowed to call the API, e.g. "https://shop.example.com".
+  CORS_ORIGINS: z
+    .string()
+    .default("http://localhost:5173")
+    .transform((value) =>
+      value
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    ),
+  RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300), // per IP, all API routes
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10), // failed logins per IP
   SEED_ADMIN_EMAIL: z.email().default("admin@shopapi.dev"),
   SEED_ADMIN_PASSWORD: z.string().min(8).optional(),
 });

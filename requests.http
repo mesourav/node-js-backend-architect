@@ -4,6 +4,9 @@
 ### Health check
 GET {{base}}/health
 
+### Readiness (checks MongoDB; 503 if not ready)
+GET {{base}}/health/ready
+
 ### Create a product
 POST {{base}}/products
 Content-Type: application/json
