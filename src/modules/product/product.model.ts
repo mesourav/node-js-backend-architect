@@ -11,6 +11,9 @@ const productSchema = new Schema(
     category: { type: String, enum: PRODUCT_CATEGORIES, required: true },
     stock: { type: Number, required: true, min: 0, default: 0 },
     isActive: { type: Boolean, default: true },
+    // Reference (like a foreign key): store only the brand's _id, not a copy of the brand.
+    // `ref` tells Mongoose which model populate() should load. null = unbranded product.
+    brand: { type: Schema.Types.ObjectId, ref: "Brand", default: null },
   },
   { timestamps: true },
 );
@@ -20,6 +23,9 @@ const productSchema = new Schema(
 productSchema.index({ category: 1, isActive: 1, priceInCents: 1 });
 // Text index for searching by name/description.
 productSchema.index({ name: "text", description: "text" });
+// Index the reference: every join/filter on brand (brand -> its products) uses it.
+// Without it, each $lookup scans the whole products collection.
+productSchema.index({ brand: 1 });
 
 export type Product = InferSchemaType<typeof productSchema>;
 export const ProductModel = model("Product", productSchema);

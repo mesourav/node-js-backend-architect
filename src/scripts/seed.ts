@@ -1,6 +1,8 @@
 import { env } from "../config/env";
 import { connectDB, disconnectDB } from "../config/db";
 import { logger } from "../config/logger";
+import { BrandModel } from "../modules/brand/brand.model";
+import { CreateBrandInput } from "../modules/brand/brand.schema";
 import { ProductModel } from "../modules/product/product.model";
 import { CreateProductInput } from "../modules/product/product.schema";
 
@@ -224,6 +226,48 @@ const products: CreateProductInput[] = [
   },
 ];
 
+// Bose and Adidas have no products on purpose: they show up in a LEFT join but not an INNER join.
+const brands: CreateBrandInput[] = [
+  { name: "Apple", country: "USA", website: "https://www.apple.com" },
+  { name: "Samsung", country: "South Korea" },
+  { name: "Sony", country: "Japan" },
+  { name: "Logitech", country: "Switzerland" },
+  { name: "Dell", country: "USA" },
+  { name: "Levi's", country: "USA" },
+  { name: "Philips", country: "Netherlands" },
+  { name: "Prestige", country: "India" },
+  { name: "Yonex", country: "Japan" },
+  { name: "SG", country: "India" },
+  { name: "Nike", country: "USA" },
+  { name: "O'Reilly", country: "USA" },
+  { name: "Pearson", country: "UK" },
+  { name: "Packt", country: "UK" },
+  { name: "Bose", country: "USA" },
+  { name: "Adidas", country: "Germany" },
+];
+
+// product name -> brand name. Products not listed here are unbranded (brand: null):
+// they show up in a LEFT join but not an INNER join.
+const productBrand: Record<string, string> = {
+  "iPhone 17": "Apple",
+  "MacBook Air M5": "Apple",
+  "Samsung Galaxy S26": "Samsung",
+  "Sony WH-1000XM6": "Sony",
+  "Logitech MX Master 4": "Logitech",
+  "Dell 27 4K Monitor": "Dell",
+  "Levis 511 Slim Jeans": "Levi's",
+  "Philips Air Fryer": "Philips",
+  "Prestige Pressure Cooker": "Prestige",
+  "Yonex Badminton Racket": "Yonex",
+  "SG Cricket Bat": "SG",
+  "Nike Football": "Nike",
+  "Running Shoes": "Nike",
+  "Designing Data-Intensive Applications": "O'Reilly",
+  "Clean Code": "Pearson",
+  "The Pragmatic Programmer": "Pearson",
+  "Node.js Design Patterns": "Packt",
+};
+
 async function seed() {
   if (env.NODE_ENV === "production") {
     throw new Error("Refusing to seed a production database");
@@ -231,14 +275,39 @@ async function seed() {
 
   await connectDB();
 
-  // Upsert by name: one round trip for all products, and safe to run repeatedly.
-  const result = await ProductModel.bulkWrite(
-    products.map((p) => ({
-      updateOne: { filter: { name: p.name }, update: { $set: p }, upsert: true },
+  // 1. Brands first: products reference them, so they must exist (like a parent table in SQL).
+  //    Upsert by name: one round trip for all, and safe to run repeatedly.
+  const brandResult = await BrandModel.bulkWrite(
+    brands.map((b) => ({
+      updateOne: { filter: { name: b.name }, update: { $set: b }, upsert: true },
     })),
   );
 
-  logger.info({ inserted: result.upsertedCount, alreadyExisted: result.matchedCount }, "Seed done");
+  // 2. Look up the generated _ids so products can reference them.
+  const brandDocs = await BrandModel.find({}, { name: 1 }).lean();
+  const brandIdByName = new Map(brandDocs.map((b) => [b.name, b._id.toString()]));
+
+  // 3. Products, each pointing at its brand's _id (or null).
+  const productResult = await ProductModel.bulkWrite(
+    products.map((p) => {
+      const brandName = productBrand[p.name];
+      const brand = brandName ? brandIdByName.get(brandName) : null;
+      return {
+        updateOne: { filter: { name: p.name }, update: { $set: { ...p, brand } }, upsert: true },
+      };
+    }),
+  );
+
+  logger.info(
+    {
+      brands: { inserted: brandResult.upsertedCount, alreadyExisted: brandResult.matchedCount },
+      products: {
+        inserted: productResult.upsertedCount,
+        alreadyExisted: productResult.matchedCount,
+      },
+    },
+    "Seed done",
+  );
 }
 
 seed()

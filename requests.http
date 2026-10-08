@@ -42,3 +42,44 @@ POST {{base}}/products
 Content-Type: application/json
 
 { "name": "x", "priceInCents": -5, "category": "toys" }
+
+############ BRANDS & JOINS ############
+
+### List brands (copy an _id from here)
+GET {{base}}/brands
+
+### One-to-many: brand with its products ($lookup)
+GET {{base}}/brands/PASTE_BRAND_ID
+
+### LEFT OUTER JOIN: every brand + product count / avg price / inventory value
+GET {{base}}/brands/summary
+
+### INNER JOIN: only brands that have products
+GET {{base}}/brands/summary?hasProducts=true
+
+### ANTI JOIN: brands with NO products
+GET {{base}}/brands/summary?hasProducts=false
+
+### INNER JOIN products -> brand: only branded products ($lookup + $unwind)
+GET {{base}}/products/with-brand?join=inner
+
+### LEFT JOIN products -> brand: all products, brand null if none
+GET {{base}}/products/with-brand?join=left
+
+### populate(): product list with brand embedded (application-side join)
+GET {{base}}/products?limit=5
+
+### Filter by reference (no join needed)
+GET {{base}}/products?brand=PASTE_BRAND_ID
+
+### Create a brand
+POST {{base}}/brands
+Content-Type: application/json
+
+{ "name": "Puma", "country": "Germany" }
+
+### Link a product to a brand (or "brand": null to unlink)
+PATCH {{base}}/products/PASTE_PRODUCT_ID
+Content-Type: application/json
+
+{ "brand": "PASTE_BRAND_ID" }

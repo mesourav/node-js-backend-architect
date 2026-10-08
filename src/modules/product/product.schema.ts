@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isValidObjectId } from "mongoose";
+import { objectIdSchema } from "../../utils/objectId";
 import { PRODUCT_CATEGORIES } from "./product.model";
 
 export const createProductSchema = z.object({
@@ -9,23 +9,24 @@ export const createProductSchema = z.object({
   category: z.enum(PRODUCT_CATEGORIES),
   stock: z.number().int().nonnegative().default(0),
   isActive: z.boolean().optional(),
+  brand: objectIdSchema.nullable().optional(),
 });
 
 // PATCH: every field optional, but at least one must be sent.
+// brand: null removes the product's brand.
 export const updateProductSchema = createProductSchema
   .omit({ stock: true })
   .extend({ stock: z.number().int().nonnegative() })
   .partial()
   .refine((data) => Object.keys(data).length > 0, "Provide at least one field to update");
 
-export const productIdSchema = z.object({
-  id: z.string().refine((id) => isValidObjectId(id), "Invalid product id"),
-});
+export const productIdSchema = z.object({ id: objectIdSchema });
 
 export const listProductsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   category: z.enum(PRODUCT_CATEGORIES).optional(),
+  brand: objectIdSchema.optional(),
   minPrice: z.coerce.number().int().nonnegative().optional(),
   maxPrice: z.coerce.number().int().nonnegative().optional(),
   search: z.string().trim().min(1).optional(),
@@ -35,6 +36,11 @@ export const listProductsQuerySchema = z.object({
     .default("-createdAt"),
 });
 
+export const productsWithBrandQuerySchema = z.object({
+  join: z.enum(["inner", "left"]).default("inner"),
+});
+
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type ListProductsQuery = z.infer<typeof listProductsQuerySchema>;
+export type ProductsWithBrandQuery = z.infer<typeof productsWithBrandQuerySchema>;

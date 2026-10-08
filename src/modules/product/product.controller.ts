@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import * as productService from "./product.service";
-import { CreateProductInput, ListProductsQuery, UpdateProductInput } from "./product.schema";
+import {
+  CreateProductInput,
+  ListProductsQuery,
+  ProductsWithBrandQuery,
+  UpdateProductInput,
+} from "./product.schema";
 
 // Controller layer: translates HTTP <-> service calls. No business logic here.
 // Express 5 forwards rejected promises to the error handler, so no try/catch needed.
@@ -36,6 +41,13 @@ export async function update(req: Request<IdParams, unknown, UpdateProductInput>
 export async function remove(req: Request<IdParams>, res: Response) {
   await productService.deleteProduct(req.params.id);
   res.status(204).send();
+}
+
+export async function withBrand(_req: Request, res: Response) {
+  const result = await productService.getProductsWithBrand(
+    res.locals.query as ProductsWithBrandQuery,
+  );
+  res.json({ success: true, ...result });
 }
 
 export async function productsStats(_req: Request, res: Response) {
