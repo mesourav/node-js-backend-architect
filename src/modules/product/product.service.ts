@@ -1,4 +1,4 @@
-import mongoose, { Types } from "mongoose";
+import mongoose, { ClientSession, Types } from "mongoose";
 import { AppError } from "../../utils/AppError";
 import * as brandService from "../brand/brand.service";
 import { ProductModel } from "./product.model";
@@ -105,6 +105,36 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
     if (!product) throw new AppError(404, "Product not found");
     return product;
   });
+}
+
+/**
+ * Used by the order module: atomically take `quantity` units out of stock.
+ *
+ * The check ("enough stock?") and the change ("subtract") are ONE conditional update.
+ * Two customers buying the last unit at the same moment can't both succeed: the second
+ * update finds stock < quantity, matches nothing, and fails. No overselling, no negative
+ * stock. Returns the name/price BEFORE the update, for the order's snapshot.
+ */
+export async function reserveStock(productId: string, quantity: number, session: ClientSession) {
+  const product = await ProductModel.findOneAndUpdate(
+    { _id: productId, isActive: true, stock: { $gte: quantity } },
+    { $inc: { stock: -quantity } },
+    { session, projection: { name: 1, priceInCents: 1 } },
+  ).lean();
+  if (product) return product;
+
+  // Nothing matched: find out why, to give the customer a useful error.
+  const current = await ProductModel.findById(productId, { name: 1, stock: 1, isActive: 1 })
+    .session(session)
+    .lean();
+  if (!current?.isActive) throw new AppError(400, `Product ${productId} is not available`);
+  throw new AppError(409, `Not enough stock for "${current.name}": only ${current.stock} left`);
+}
+
+// Used by the order module when an order is cancelled: put the units back.
+// If the product was deleted meanwhile, nothing matches, which is fine.
+export async function releaseStock(productId: string, quantity: number, session: ClientSession) {
+  await ProductModel.updateOne({ _id: productId }, { $inc: { stock: quantity } }, { session });
 }
 
 export async function deleteProduct(id: string) {
