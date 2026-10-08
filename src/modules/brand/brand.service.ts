@@ -1,4 +1,4 @@
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { AppError } from "../../utils/AppError";
 import { BrandModel } from "./brand.model";
 import { BrandSummaryQuery, CreateBrandInput } from "./brand.schema";
@@ -20,6 +20,26 @@ export async function listBrands() {
 export async function assertBrandExists(id: string) {
   const exists = await BrandModel.exists({ _id: id });
   if (!exists) throw new AppError(400, `Brand ${id} does not exist`);
+}
+
+// Like SQL's ON DELETE RESTRICT: a brand can only be deleted when no product references it.
+export async function deleteBrand(id: string) {
+  // 1. Count products that point to this brand: active AND inactive, otherwise an
+  //    inactive product would be left pointing to a brand that no longer exists.
+  //    We use the raw collection (not a Mongoose model), which does NOT convert
+  //    strings to ObjectIds for us, so we convert the id ourselves.
+  const productCount = await mongoose.connection
+    .collection(PRODUCTS_COLLECTION)
+    .countDocuments({ brand: new Types.ObjectId(id) });
+
+  // 2. Still in use -> refuse with 409 Conflict.
+  if (productCount > 0) {
+    throw new AppError(409, `Cannot delete brand: ${productCount} product(s) still use it`);
+  }
+
+  // 3. Delete. null means there was no brand with this id -> 404.
+  const deleted = await BrandModel.findByIdAndDelete(id);
+  if (!deleted) throw new AppError(404, "Brand not found");
 }
 
 /**

@@ -9,5 +9,6 @@ router.get("/summary", validate({ query: brandSummaryQuerySchema }), controller.
 router.get("/", controller.list);
 router.post("/", validate({ body: createBrandSchema }), controller.create);
 router.get("/:id", validate({ params: brandIdSchema }), controller.getById);
+router.delete("/:id", validate({ params: brandIdSchema }), controller.remove);
 
 export default router;

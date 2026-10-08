@@ -5,6 +5,9 @@ import { logger } from "./logger";
 export async function connectDB() {
   mongoose.connection.on("disconnected", () => logger.warn("MongoDB disconnected"));
   mongoose.connection.on("reconnected", () => logger.info("MongoDB reconnected"));
+  // An "error" event with no listener crashes a Node process. The driver reconnects
+  // by itself, so we only need to log it.
+  mongoose.connection.on("error", (err) => logger.error({ err }, "MongoDB connection error"));
 
   await mongoose.connect(env.MONGODB_URI, {
     dbName: env.MONGODB_DB_NAME,

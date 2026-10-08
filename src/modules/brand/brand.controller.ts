@@ -23,3 +23,8 @@ export async function summary(_req: Request, res: Response) {
   const brands = await brandService.getBrandsSummary(res.locals.query as BrandSummaryQuery);
   res.json({ success: true, count: brands.length, data: brands });
 }
+
+export async function remove(req: Request<IdParams>, res: Response) {
+  await brandService.deleteBrand(req.params.id);
+  res.status(204).send();
+}

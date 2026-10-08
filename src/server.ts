@@ -27,9 +27,16 @@ async function main() {
   // Stop accepting new requests, let in-flight ones finish, then close the DB.
   function shutdown(signal: string) {
     logger.info({ signal }, "Shutting down");
+    // This callback runs outside any request, so Express can't catch its errors:
+    // this is exactly where an explicit try/catch belongs.
     server.close(async () => {
-      await disconnectDB();
-      process.exit(0);
+      try {
+        await disconnectDB();
+        process.exit(0);
+      } catch (err) {
+        logger.error({ err }, "Error while closing MongoDB connection");
+        process.exit(1);
+      }
     });
     setTimeout(() => {
       logger.error("Graceful shutdown timed out, forcing exit");
