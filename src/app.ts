@@ -1,6 +1,5 @@
 import express from "express";
-import healthRoutes from "./routes/health.routes";
-import productRoutes from "./modules/product/product.routes";
+import apiRoutes from "./routes";
 import { errorHandler, notFound } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/requestLogger";
 
@@ -13,8 +12,7 @@ export function createApp() {
   app.use(requestLogger);
   app.use(express.json({ limit: "10kb" }));
 
-  app.use("/api/v1/health", healthRoutes);
-  app.use("/api/v1/products", productRoutes);
+  app.use("/api/v1", apiRoutes);
 
   app.use(notFound);
   app.use(errorHandler);
