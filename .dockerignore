@@ -1,0 +1,16 @@
+# Files Docker never copies into the build. Keeps images small and builds fast,
+# and stops secrets (.env) from ending up inside an image.
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+.git
+.vscode
+tests
+*.md
+requests.http
+Dockerfile
+docker-compose.yml
+nginx

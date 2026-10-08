@@ -17,7 +17,10 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "explain": "tsx src/scripts/explain.ts",
-    "backfill:brand-counts": "tsx src/scripts/backfillBrandCounts.ts"
+    "backfill:brand-counts": "tsx src/scripts/backfillBrandCounts.ts",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f api"
   },
   "keywords": [],
   "author": "",
