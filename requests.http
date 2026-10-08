@@ -127,3 +127,13 @@ Content-Type: application/json
 Authorization: Bearer {{adminToken}}
 
 { "name": "Admin Product", "priceInCents": 100, "category": "home" }
+
+### Get a new access token (REST Client sends the refreshToken cookie automatically)
+POST {{base}}/auth/refresh
+
+### Logout this device
+POST {{base}}/auth/logout
+
+### Logout every device
+POST {{base}}/auth/logout-all
+Authorization: Bearer {{adminToken}}

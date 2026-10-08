@@ -1,4 +1,5 @@
 import express from "express";
+import cookieParser from "cookie-parser";
 import apiRoutes from "./routes";
 import { errorHandler, notFound } from "./middlewares/errorHandler";
 import { requestLogger } from "./middlewares/requestLogger";
@@ -11,6 +12,7 @@ export function createApp() {
   // First, so every request (including ones that fail body parsing) is logged with an id.
   app.use(requestLogger);
   app.use(express.json({ limit: "10kb" }));
+  app.use(cookieParser()); // fills req.cookies (used for the refresh token)
 
   app.use("/api/v1", apiRoutes);
 

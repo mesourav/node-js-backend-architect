@@ -7,7 +7,7 @@ Stack: Node.js + Express + TypeScript + MongoDB, deployed on AWS.
 | --- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | 1   | Project foundation | TS setup, folder structure, env validation, error handling, graceful shutdown                                                       | ✅     |
 | 2   | MongoDB + CRUD     | Mongoose models, REST design, validation (zod), pagination/filter/sort, layered architecture (route → controller → service → model) | ✅     |
-| 3   | Auth               | bcrypt, JWT access + refresh tokens, httpOnly cookies, role-based authorization (user/admin)                                        | 🟡     |
+| 3   | Auth               | bcrypt, JWT access + refresh tokens, httpOnly cookies, role-based authorization (user/admin)                                        | ✅     |
 | 4   | Testing            | Jest/Vitest, unit vs integration tests, supertest, in-memory Mongo, coverage                                                        | ⬜     |
 | 5   | Prod hardening     | ~~Logging (pino)~~ ✅, ~~request IDs~~ ✅, helmet, CORS, rate limiting                                                              | 🟡     |
 | 6   | Database choice    | SQL vs NoSQL vs Postgres, indexing, transactions, CAP theorem (theory + small Postgres comparison)                                  | ⬜     |

@@ -3,6 +3,7 @@ import { env } from "../../config/env";
 import { AppError } from "../../utils/AppError";
 import * as userService from "../user/user.service";
 import { signAccessToken } from "./jwt";
+import * as refreshTokenService from "./refreshToken.service";
 import { LoginInput, RegisterInput } from "./auth.schema";
 
 // Cost factor: each +1 doubles the hashing time. ~12 takes a few hundred ms, which is
@@ -19,7 +20,9 @@ export function hashPassword(password: string) {
   return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
-function buildAuthResponse(user: Parameters<typeof userService.toPublicUser>[0]) {
+type UserForAuth = Parameters<typeof userService.toPublicUser>[0];
+
+function buildAuthResponse(user: UserForAuth) {
   const publicUser = userService.toPublicUser(user);
   return {
     user: publicUser,
@@ -27,6 +30,14 @@ function buildAuthResponse(user: Parameters<typeof userService.toPublicUser>[0])
     tokenType: "Bearer",
     expiresIn: env.JWT_ACCESS_TTL_SECONDS,
   };
+}
+
+// A new login session: short-lived access token (JSON body) + long-lived refresh token
+// (the controller puts it in an httpOnly cookie, never in the body).
+async function startSession(user: UserForAuth) {
+  const auth = buildAuthResponse(user);
+  const refreshToken = await refreshTokenService.issueRefreshToken(auth.user.id);
+  return { auth, refreshToken };
 }
 
 export async function register(input: RegisterInput) {
@@ -37,7 +48,7 @@ export async function register(input: RegisterInput) {
     email: input.email,
     passwordHash,
   });
-  return buildAuthResponse(user);
+  return startSession(user);
 }
 
 export async function login(input: LoginInput) {
@@ -48,5 +59,26 @@ export async function login(input: LoginInput) {
   if (!user || !passwordMatches) {
     throw new AppError(401, "Invalid email or password");
   }
-  return buildAuthResponse(user);
+  return startSession(user);
+}
+
+export async function refresh(token: string) {
+  const { userId, refreshToken } = await refreshTokenService.rotateRefreshToken(token);
+
+  // Re-read the user: the new access token gets their CURRENT role, so a demoted admin
+  // loses admin rights at the next refresh (at most JWT_ACCESS_TTL_SECONDS later).
+  const user = await userService.findUserById(userId);
+  if (!user) {
+    await refreshTokenService.revokeAllForUser(userId);
+    throw new AppError(401, "Invalid or expired refresh token");
+  }
+  return { auth: buildAuthResponse(user), refreshToken };
+}
+
+export async function logout(token: string) {
+  await refreshTokenService.revokeSession(token);
+}
+
+export async function logoutAll(userId: string) {
+  await refreshTokenService.revokeAllForUser(userId);
 }

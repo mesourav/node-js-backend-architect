@@ -32,6 +32,11 @@ export async function findByEmailWithPassword(email: string) {
   return UserModel.findOne({ email: email.toLowerCase() }).select("+passwordHash").lean();
 }
 
+// null when missing (callers decide what that means, e.g. 401 during token refresh).
+export async function findUserById(id: string) {
+  return UserModel.findById(id).lean();
+}
+
 export async function getUserById(id: string) {
   const user = await UserModel.findById(id).lean();
   if (!user) throw new AppError(404, "User not found");
