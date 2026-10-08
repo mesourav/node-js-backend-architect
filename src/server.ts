@@ -2,6 +2,7 @@ import { createApp } from "./app";
 import { env } from "./config/env";
 import { connectDB, disconnectDB } from "./config/db";
 import { logger } from "./config/logger";
+import { connectRedis, disconnectRedis } from "./config/redis";
 import { markShuttingDown } from "./modules/health/health.service";
 
 // Last-resort safety nets: after an unexpected error the process may be in a broken
@@ -18,6 +19,10 @@ process.on("uncaughtException", (err) => {
 async function main() {
   // Connect to the DB BEFORE accepting traffic: no point serving requests we can't fulfil.
   await connectDB();
+  // Redis must be reachable at STARTUP (the rate limiter loads its scripts into Redis
+  // when the app is built). If it isn't, we exit and Docker/Kubernetes retry. Once
+  // running, a Redis outage only degrades the app (see config/redis.ts).
+  await connectRedis();
 
   const app = createApp();
   const server = app.listen(env.PORT, () => {
@@ -41,10 +46,10 @@ async function main() {
     // this is exactly where an explicit try/catch belongs.
     server.close(async () => {
       try {
-        await disconnectDB();
+        await Promise.all([disconnectDB(), disconnectRedis()]);
         process.exit(0);
       } catch (err) {
-        logger.error({ err }, "Error while closing MongoDB connection");
+        logger.error({ err }, "Error while closing database connections");
         process.exit(1);
       }
     });

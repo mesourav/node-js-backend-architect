@@ -1,5 +1,6 @@
 import mongoose, { ClientSession, Types } from "mongoose";
 import { AppError } from "../../utils/AppError";
+import { invalidateCache } from "../../utils/cache";
 import * as brandService from "../brand/brand.service";
 import { ProductModel } from "./product.model";
 import {
@@ -26,12 +27,26 @@ const BRAND_FIELDS = "name country";
  * transaction and is NOT undone on abort.
  */
 export async function createProduct(input: CreateProductInput) {
-  return mongoose.connection.transaction(async (session) => {
+  const product = await mongoose.connection.transaction(async (session) => {
     if (input.brand) await brandService.linkProduct(input.brand, session);
     // create() needs the array form to accept a session.
-    const [product] = await ProductModel.create([input], { session });
-    return product;
+    const [created] = await ProductModel.create([input], { session });
+    return created;
   });
+  await invalidateProductCaches();
+  return product;
+}
+
+/**
+ * Product changes make cached product responses stale, AND brand responses too
+ * (brand summaries include product counts and prices).
+ *
+ * Always invalidate AFTER the transaction commits, never inside it. If we invalidated
+ * first, a request arriving before the commit would read the OLD data from MongoDB and
+ * put it straight back into the cache, where it would stay stale until the TTL expires.
+ */
+export async function invalidateProductCaches() {
+  await invalidateCache("products", "brands");
 }
 
 /**
@@ -85,7 +100,7 @@ export async function getProductById(id: string) {
 }
 
 export async function updateProduct(id: string, input: UpdateProductInput) {
-  return mongoose.connection.transaction(async (session) => {
+  const product = await mongoose.connection.transaction(async (session) => {
     const existing = await ProductModel.findById(id, { brand: 1 }).session(session).lean();
     if (!existing) throw new AppError(404, "Product not found");
 
@@ -97,14 +112,16 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
       if (newBrand) await brandService.linkProduct(newBrand, session);
     }
 
-    const product = await ProductModel.findByIdAndUpdate(id, input, {
+    const updated = await ProductModel.findByIdAndUpdate(id, input, {
       returnDocument: "after", // return the updated document, not the old one
       runValidators: true, // apply schema rules (min, enum...) on updates too
       session,
     }).lean();
-    if (!product) throw new AppError(404, "Product not found");
-    return product;
+    if (!updated) throw new AppError(404, "Product not found");
+    return updated;
   });
+  await invalidateProductCaches();
+  return product;
 }
 
 /**
@@ -114,6 +131,9 @@ export async function updateProduct(id: string, input: UpdateProductInput) {
  * Two customers buying the last unit at the same moment can't both succeed: the second
  * update finds stock < quantity, matches nothing, and fails. No overselling, no negative
  * stock. Returns the name/price BEFORE the update, for the order's snapshot.
+ *
+ * Runs inside the CALLER's transaction, so the caller must call invalidateProductCaches()
+ * after committing (cached product responses include the stock level).
  */
 export async function reserveStock(productId: string, quantity: number, session: ClientSession) {
   const product = await ProductModel.findOneAndUpdate(
@@ -143,6 +163,7 @@ export async function deleteProduct(id: string) {
     if (!product) throw new AppError(404, "Product not found");
     if (product.brand) await brandService.unlinkProduct(product.brand.toString(), session);
   });
+  await invalidateProductCaches();
 }
 
 type ProductWithBrand = {

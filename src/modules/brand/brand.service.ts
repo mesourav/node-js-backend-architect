@@ -1,5 +1,6 @@
 import { ClientSession, Types } from "mongoose";
 import { AppError } from "../../utils/AppError";
+import { invalidateCache } from "../../utils/cache";
 import { BrandModel } from "./brand.model";
 import { BrandSummaryQuery, CreateBrandInput } from "./brand.schema";
 
@@ -8,7 +9,9 @@ import { BrandSummaryQuery, CreateBrandInput } from "./brand.schema";
 const PRODUCTS_COLLECTION = "products";
 
 export async function createBrand(input: CreateBrandInput) {
-  return BrandModel.create(input);
+  const brand = await BrandModel.create(input);
+  await invalidateCache("brands");
+  return brand;
 }
 
 export async function listBrands() {
@@ -41,7 +44,11 @@ export async function unlinkProduct(brandId: string, session: ClientSession) {
 // same document (inside a transaction), so MongoDB serialises the two: they can't both win.
 export async function deleteBrand(id: string) {
   const deleted = await BrandModel.findOneAndDelete({ _id: id, productCount: 0 });
-  if (deleted) return;
+  if (deleted) {
+    // Only brand responses change: a deletable brand has no products embedding it.
+    await invalidateCache("brands");
+    return;
+  }
 
   // Nothing deleted: either the brand doesn't exist, or it is still in use.
   const brand = await BrandModel.findById(id, { productCount: 1 }).lean();

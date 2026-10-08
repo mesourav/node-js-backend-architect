@@ -1,4 +1,5 @@
 import { isDBHealthy } from "../../config/db";
+import { isRedisHealthy } from "../../config/redis";
 
 let shuttingDown = false;
 
@@ -17,14 +18,21 @@ export function getLiveness() {
 
 // Readiness: "should this instance receive traffic right now?"
 // Checks dependencies; failing just takes the instance out of rotation (no restart).
+//
+// Only CRITICAL dependencies decide readiness. MongoDB is critical: without it we can't
+// serve anything. Redis is not: without it we're slower (no cache) but still correct.
+// If Redis failed readiness, a Redis outage would pull EVERY instance out of the load
+// balancer: a full outage caused by a component the app can live without.
+// Redis is still reported, as "degraded", so dashboards and alerts can see it.
 export async function getReadiness() {
   const mongodb = await isDBHealthy();
+  const redisUp = isRedisHealthy();
   const ready = mongodb && !shuttingDown;
   return {
     ready,
     body: {
-      status: ready ? "ready" : "not ready",
-      checks: { mongodb: mongodb ? "up" : "down", shuttingDown },
+      status: !ready ? "not ready" : redisUp ? "ready" : "degraded",
+      checks: { mongodb: mongodb ? "up" : "down", redis: redisUp ? "up" : "down", shuttingDown },
     },
   };
 }
